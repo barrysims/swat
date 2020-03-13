@@ -2,7 +2,7 @@
 
 ![alt text](/fly.png "Scala Web Application Template")
 
-A Scala Web Application Template
+Scala Web Application Template
 
 This is a stripped down skeleton/framework project that I've been using to build web applications with Scala.
 
