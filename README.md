@@ -22,8 +22,8 @@ SwaggerUI can be used to test the services.
 
 ## Aims of this Project
 
-To provide a clean, boilerplate free way of building web services with scala that centralise error handling, logging, and swagger generation.
-The heavy lifting is done by Rho/Http4s/Circe/Cats, but this project exposes a Monad stack `Ctxt` that allows us to manage three contexts:
+To provide a clean, boilerplate free way of building web services with scala that centralises error handling, logging, and swagger generation.
+The heavy lifting is done by Rho/Http4s/Circe/Cats, and this project exposes a Monad stack `Context` that allows us to manage three concerns:
 
 * `Per-request configuration`
 * `Effects`
@@ -43,10 +43,3 @@ an `OK` or standard error status.
 swat/examples shows the code in use.  I've been using a very simple `routes -> service -> client` structure that isolates declaring the API (routes) from the business logic (service) from the persistence (client).
 
 Most of the interesting Type mangling happens in swat/core/syntax/Ctxt.scala and this is used by adding `extends Ctxt[C]` to the code, where `C` is whatever configuration that needs to be passed around (in the examples it's just a simple object that wraps a trace-token).
-
- 
-
-
-
-
-
