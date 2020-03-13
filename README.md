@@ -1,4 +1,4 @@
-# swat
+# SWAT
 
 ![alt text](/fly.png "Scala Web Application Template")
 
@@ -32,7 +32,7 @@ The heavy lifting is done by Rho/Http4s/Circe/Cats, but this project exposes a M
 Using a monad stack `Reader[IO[Either[Throwable, A]]]`. (In fact, for simplicity, we usually just use the Transformer `Kleisli[EitherT[IO, Throwable, A], C, A]`)  
 
 `trait Ctxt` defines a handful of useful syntaxes including a
-`Ctxt` typealias which acts as a transformer for the stack, and `.context` extensions which allow us to lift easily to a `Context`.
+`Context` typealias which acts as a transformer for the stack, and `.context` extensions which allow us to lift easily to a `Context`.
 
 Additionally, a `toResponse` function is provided on `Context[A]` which handles
 running the Reader and folding over the Either to generate an IO response with
