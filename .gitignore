@@ -1,0 +1,13 @@
+
+### Scala ###
+*.log
+target/
+
+### Intellij ###
+.idea
+**/*.iml
+
+### Sigar ###
+native
+
+*.swp
