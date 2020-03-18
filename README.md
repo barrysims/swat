@@ -42,4 +42,6 @@ an `OK` or standard error status.
 
 swat/examples shows the code in use.  I've been using a very simple `routes -> service -> client` structure that isolates declaring the API (routes) from the business logic (service) from the persistence (client).
 
-Most of the interesting Type mangling happens in swat/core/syntax/Ctxt.scala and this is used by adding `extends Ctxt[C]` to the code, where `C` is whatever configuration that needs to be passed around (in the examples it's just a simple object that wraps a trace-token).
+Most of the interesting Type mangling happens in [swat/core/syntax/Ctxt.scala](src/main/scala/swat/core/syntax/Ctxt.scala) and this is used by adding `extends Ctxt[C]` to the code, where `C` is whatever configuration that needs to be passed around (in the examples it's just a simple object that wraps a trace-token).
+
+
