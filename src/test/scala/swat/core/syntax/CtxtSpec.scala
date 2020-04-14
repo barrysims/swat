@@ -1,6 +1,6 @@
 package swat.core.syntax
 
-import cats.data.{EitherT, Kleisli}
+import cats.data.Kleisli
 import cats.effect.IO
 import org.http4s._
 import org.http4s.rho.Result
@@ -21,7 +21,7 @@ class CtxtSpec extends FlatSpec with Matchers with TestSyntax with EitherValues 
 
   it should "retrieve the conf passed into run" in new TestContext {
     val testConf = SimpleConf(traceToken = "Some Tracetoken")
-    getConf.run(testConf).value.unsafeRunSync() shouldBe Right(testConf)
+    getConf.run(testConf).attempt.unsafeRunSync() shouldBe Right(testConf)
   }
 
   behavior of "extractEither"
@@ -50,13 +50,13 @@ class CtxtSpec extends FlatSpec with Matchers with TestSyntax with EitherValues 
     val f1 = Future {
       Thread.sleep(500)
       counter = counter + 1
-      Right(counter)
+      counter
     }
     val f2 = Future {
       counter = counter + 1
-      Right(counter)
+      counter
     }
-    val result: Either[Throwable, (Int, Int)] = runInParallel(IO.fromFuture(IO(f1)).context, IO.fromFuture(IO(f2)).context).evaluate
+    val result: Either[Throwable, (Int, Int)] = runInParallel((IO.fromFuture(IO(f1)).context, IO.fromFuture(IO(f2)).context)).evaluate
     // If the futures are executed in parallel, f1 should be 2 and f2 should be 1 since f2 completes before f1.
     result shouldBe Right(2, 1)
   }
@@ -77,16 +77,16 @@ class CtxtSpec extends FlatSpec with Matchers with TestSyntax with EitherValues 
     val f1 = Future {
       Thread.sleep(2000)
       counter = counter + 1
-      Right(counter)
+      counter
     }
     val f2 = Future {
       Thread.sleep(1000)
       counter = counter + 1
-      Right(counter)
+      counter
     }
     val f3 = Future {
       counter = counter + 1
-      Right(counter)
+      counter
     }
     val result: Either[Throwable, (Int, Int, Int)] = runInParallel(
       IO.fromFuture(IO(f1)).context,
@@ -121,7 +121,7 @@ class CtxtSpec extends FlatSpec with Matchers with TestSyntax with EitherValues 
   trait ResponseTestContext extends StringSyntax
 
   it should "return a successful response with tracetoken header set" in new ResponseTestContext {
-    val successfulContext = Kleisli[EitherTIO, SimpleConf, Unit]{ _ => EitherT[IO, Throwable, Unit](IO(Right(()))) }
+    val successfulContext = Kleisli[IO, SimpleConf, Unit]{ _ => IO.delay(()) }
 
     successfulContext.toResponse(SimpleConf("12345")).unsafeRunSync() match {
       case Result(r) =>
@@ -131,7 +131,7 @@ class CtxtSpec extends FlatSpec with Matchers with TestSyntax with EitherValues 
   }
 
   it should "translate a BadRequest ApiError into a Response with the correct HTTP status" in new ResponseTestContext {
-    val badRequest = Kleisli[EitherTIO, SimpleConf, Unit]{ _ => EitherT[IO, Throwable, Unit](IO(Left(Error.BadRequest())))}
+    val badRequest = Kleisli[IO, SimpleConf, Unit]{ _ => IO.fromEither(Left(Error.BadRequest())) }
 
     badRequest.toResponse(SimpleConf("12345")).unsafeRunSync() match {
       case Result(r) =>
@@ -141,7 +141,7 @@ class CtxtSpec extends FlatSpec with Matchers with TestSyntax with EitherValues 
   }
 
   it should "translate a NonFatal exception into an internal server error response" in new ResponseTestContext {
-    val failedRequest = Kleisli[EitherTIO, SimpleConf, Unit]{ _ => EitherT[IO, Throwable, Unit](IO(Left(new IllegalArgumentException("Error"))))}
+    val failedRequest = Kleisli[IO, SimpleConf, Unit]{ _ => IO.fromEither(Left(new IllegalArgumentException("Error"))) }
 
     failedRequest.toResponse(SimpleConf("12345")).unsafeRunSync() match {
       case Result(r) =>
