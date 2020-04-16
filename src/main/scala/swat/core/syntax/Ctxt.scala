@@ -1,6 +1,6 @@
 package swat.core.syntax
 
-import cats.data.{EitherT, Kleisli, Reader}
+import cats.data.{Kleisli, Reader}
 import cats.effect.{ContextShift, IO}
 import cats.implicits._
 import io.circe.Encoder
@@ -15,50 +15,36 @@ import swat.core.syntax.conf.Conf
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.control.NonFatal
 
-/**
-  * Transformers for monad stack Reader[IO[Either]]
-  * Has two type parameters, one for the reader configuration and one for the reader result type
-  */
-trait CtxtBase {
-  type Context2[A, C <: Conf] = Kleisli[EitherTIO, C, A]
-  type EitherTIO[A] = EitherT[IO, Throwable, A]
-}
 
 object ConfSyntax extends RhoRoutes[IO]
 
 /**
-  * Transformers for monad stack Reader[IO[Either]]
+  * Transformers for monad stack Reader[IO[A]]
   * Functions have one type parameter: the reader result type
   * The reader configuration type is provided by the type parameter of the Ctxt trait
   * This allows us to extend this trait and declare the configuration type once for any subclass
   */
-trait Ctxt[CONF <: Conf] extends CtxtBase with OtherSyntax {
+trait Ctxt[CONF <: Conf] extends OtherSyntax {
 
   // Type aliases for the monad stack
-  type Context[A] = Kleisli[EitherTIO, CONF, A]
+  type Context[A] = Kleisli[IO, CONF, A]
 
-  val getConf: Kleisli[EitherTIO, CONF, CONF] = Kleisli.ask[EitherTIO, CONF]
+  val getConf: Kleisli[IO, CONF, CONF] = Kleisli.ask[IO, CONF]
 
   implicit val contextShift: ContextShift[IO] = IO.contextShift(global)
 
   // Conversions, for lifting up the monad stack
   implicit class LiftIO[A](io: IO[A]) {
-    def context: Context[A] = Kleisli[EitherTIO, CONF, A](_ => EitherT(io.attempt))
+    def context: Context[A] = Kleisli[IO, CONF, A](_ => io)
   }
-  implicit class LiftStack[A](ioEither: IO[Either[Throwable, A]]) {
-    def context: Context[A] = Kleisli[EitherTIO, CONF, A](_ => EitherT(ioEither))
+  implicit class EitherOps[A](e: Either[Throwable, A]) {
+    def context: Context[A] = Kleisli[IO, CONF, A](_ => IO.fromEither(e))
   }
-  implicit class LiftEither[A](eitherA: Either[Throwable, A]) {
-    def context: Context[A] = Kleisli[EitherTIO, CONF, A](_ => EitherT[IO, Throwable, A](IO(eitherA)))
-  }
-  implicit class LiftEitherT[A](eitherT: EitherT[IO, Throwable, A]) {
-    def context: Context[A] = Kleisli[EitherTIO, CONF, A](_ => eitherT)
-  }
-  implicit class ReaderOps[A](r: Reader[CONF, IO[Either[Throwable, A]]]) {
-    def context: Context[A] = Kleisli[EitherTIO, CONF, A](conf => EitherT(r.run(conf).extract))
+  implicit class ReaderOps[A](r: Reader[CONF, IO[A]]) {
+    def context: Context[A] = Kleisli[IO, CONF, A](conf => r.run(conf))
   }
   implicit class IdentOps[A](a: A) {
-    def context: Context[A] = Kleisli[EitherTIO, CONF, A](_ => EitherT[IO, Throwable, A](IO(Right(a))))
+    def context: Context[A] = Kleisli[IO, CONF, A](_ => IO.delay(a))
   }
 
   private def logEither[A](logger: OtherSyntax.LogMethod)(e: Either[Throwable, A]): Either[Throwable, A] =
@@ -70,7 +56,7 @@ trait Ctxt[CONF <: Conf] extends CtxtBase with OtherSyntax {
   implicit class SeqContextOps[A](l: List[Context[A]]) {
     def filterFailures(logger: OtherSyntax.LogMethod = OtherSyntax.noOpLogger): Context[List[A]] = for {
       conf <- getConf
-      res <- l.map { _.run(conf).value }.parSequence.map(_.map(logEither(logger))).map { _.collect { case Right(a) => a } }.context
+      res <- l.map { _.run(conf).attempt }.parSequence.map(_.map(logEither(logger))).map { _.collect { case Right(a) => a } }.context
     } yield res
   }
 
@@ -78,7 +64,7 @@ trait Ctxt[CONF <: Conf] extends CtxtBase with OtherSyntax {
     // Exposes the either without failing the Context
     def extractEither: Context[Either[Throwable, A]] = for {
       conf <- getConf
-      res <- c.run(conf).value.map { Right(_) }.context
+      res <- c.run(conf).attempt.context
     } yield res
 
     // Runs a context with a temporary configuration
@@ -90,12 +76,7 @@ trait Ctxt[CONF <: Conf] extends CtxtBase with OtherSyntax {
     for {
       aEitherTIO <- contexts._1.toReader
       bEitherTIO <- contexts._2.toReader
-    } yield (aEitherTIO.value, bEitherTIO.value).parMapN { (aEither, bEither) =>
-      for {
-        a <- aEither
-        b <- bEither
-      } yield (a, b)
-    }
+    } yield (aEitherTIO, bEitherTIO).parMapN { (_, _) }
   }.context
 
   // Takes a tuple of Contexts and returns a Context of a tuple of the results, in which the IOs will run in parallel
@@ -104,13 +85,7 @@ trait Ctxt[CONF <: Conf] extends CtxtBase with OtherSyntax {
       aEitherTIO <- contexts._1.toReader
       bEitherTIO <- contexts._2.toReader
       cEitherTIO <- contexts._3.toReader
-    } yield (aEitherTIO.value, bEitherTIO.value, cEitherTIO.value).parMapN { (aEither, bEither, cEither) =>
-      for {
-        a <- aEither
-        b <- bEither
-        c <- cEither
-      } yield (a, b, c)
-    }
+    } yield (aEitherTIO, bEitherTIO, cEitherTIO).parMapN { (_, _, _) }
   }.context
 
   import ConfSyntax._
@@ -141,9 +116,9 @@ trait Ctxt[CONF <: Conf] extends CtxtBase with OtherSyntax {
     case NonFatal(e) => InternalServerError(ErrorMessage(e.getMessage))
   }
 
-  implicit class ContextToResponse[A, C <: Conf](context: Kleisli[EitherTIO, C, A])(implicit encoder: Encoder[A]) {
+  implicit class ContextToResponse[A, C <: Conf](context: Kleisli[IO, C, A])(implicit encoder: Encoder[A]) {
     def toResponse(conf: C, status: EntityResponseGenerator[IO] = Ok) = {
-      val result = context.run(conf).value.flatMap {
+      val result = context.run(conf).attempt.flatMap {
         case Right(r) => status(r)
         case Left(error) => mapError(error)
       }

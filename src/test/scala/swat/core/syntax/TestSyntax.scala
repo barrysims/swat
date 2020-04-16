@@ -14,7 +14,7 @@ trait TestSyntax extends Ctxt[Conf]{
     def get(c: Conf): A = toAWithConf(c)
 
     def evaluate: Either[Throwable, A] = evaluate(conf)
-    def evaluate(c: Conf): Either[Throwable, A] = context.run(c).value.attempt.unsafeRunSync().joinRight
+    def evaluate(c: Conf): Either[Throwable, A] = context.run(c).attempt.unsafeRunSync()
 
     private def toAWithConf(c: Conf): A = evaluate(c).fold(
       { t: Throwable => throw t },
