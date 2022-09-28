@@ -10,7 +10,7 @@ import swat.core.syntax.conf.SimpleConf
 class HelloWorldRoutes(val helloWorldService: HelloWorldService = new HelloWorldService)
   extends RhoRoutes[IO] with Ctxt[SimpleConf] {
 
-  "Hello World" ** GET / "helloworld" |>> { r: Request[IO] => helloWorldService.hello().context.toResponse(SimpleConf.fromRequest(r)) }
+  "Hello World" ** GET / "hello" |>> { r: Request[IO] => helloWorldService.hello().context.toResponse(SimpleConf.fromRequest(r)) }
 
 }
 

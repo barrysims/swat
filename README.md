@@ -1,6 +1,6 @@
 # SWAT
 
-![alt text](/fly.png "Scala Web Application Template")
+![swat logo](https://raw.githubusercontent.com/barrysims/swat/master/fly.png "Scala Web Application Template")
 
 Scala Web Application Template
 
@@ -16,7 +16,7 @@ This is a stripped down skeleton/framework project that I've been using to build
 
 A couple of example services are bundled: `http://localhost:5000/api/v1/hello` and `http://localhost:5000/api/v1/todo`
 
-Swagger and SwaggerUI are generated for both at `http://localhost:5000/swagger.json` and `http://localhost:5000/swagger`
+Swagger and SwaggerUI are generated for both at `http://localhost:5000/api/v1/swagger.json` and `http://localhost:5000/api/v1/swagger`
 
 SwaggerUI can be used to test the services.
 

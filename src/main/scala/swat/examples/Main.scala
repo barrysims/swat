@@ -11,6 +11,7 @@ import org.http4s.server.jetty.JettyBuilder
 import org.http4s.server.middleware.{GZip, Logger}
 import swat.core.middleware.{Custom404, TraceToken}
 import swat.core.routes.{StaticContentRoutes, SwaggerRoutes}
+import swat.examples.contextexamples.ContextExamplesRoutes
 import swat.examples.todo.TodoRoutes
 import swat.examples.helloworld.HelloWorldRoutes
 
@@ -56,7 +57,8 @@ object Main extends IOApp {
       commonMiddleware
     } compose {
       new HelloWorldRoutes and
-      new TodoRoutes
+      new TodoRoutes and
+      new ContextExamplesRoutes
     }.toRoutes
 
     JettyBuilder[IO]
@@ -64,7 +66,7 @@ object Main extends IOApp {
       .mountService(commonMiddleware(StaticContentRoutes.routes(blocker)), prefix = "/static")
       .mountService(commonMiddleware(new SwaggerRoutes(v1).toRoutes()), prefix = s"$v1/swagger")
       .mountService(commonMiddleware(new RhoRoutes[IO].toRoutes()), prefix = "/")
-      .bindHttp(5000, "0.0.0.0")
+      .bindHttp(5000)
       .withIdleTimeout(5 minutes)
       .withAsyncTimeout(5 minutes)
       .withoutBanner
